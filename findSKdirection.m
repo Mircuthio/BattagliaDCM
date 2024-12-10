@@ -3,13 +3,13 @@ function data = findSKdirection(data)
 
 for iTr=1:length(data)
     if ismember(data(iTr).trialType,1:8)
-       data(iTr).ConditionName = 'Solo S';
+       data(iTr).ConditionName = 'Act S-Obs K';
        data(iTr).Condition = 1;
     elseif ismember(data(iTr).trialType,9:16)
-        data(iTr).ConditionName = 'Solo K';
+        data(iTr).ConditionName = 'Obs S-Act K';
         data(iTr).Condition = 2;
     else 
-        data(iTr).ConditionName = 'Joint S-k';
+        data(iTr).ConditionName = 'Act S-Act K';
         data(iTr).Condition = 3;
     end
     position = find(data(iTr).klabels ==1);

@@ -9,7 +9,7 @@ else
     isonserver=false;
 end
 if ~isonserver
-    test_dir    ='~/TESTS/SAPIENZA/DCM';
+    test_dir    ='D:\SAPIENZA_Dataset\TEST_SAPIENZA';
 else
     test_dir    ='~/SAPIENZA/SERVER/DCM';
 end
@@ -32,49 +32,50 @@ data_trials                             = BattagliaArrangeTrials(par.BattagliaAr
 data_trials = findSKdirection(data_trials);
 
 num_dir = 8; % direzioni movimento del task
-num_cond = 3; % condizioni 1-SoloS 2-SoloK 3-Joint S-K
-condition_name  = {'SoloS';'SoloK';'Joint S-K'};
-color_name = {'b','g','y'};
+num_cond = 3; % numero condizioni 1-SoloS 2-SoloK 3-Joint S-K
+condition_name  = {'Act S-Obs K';'Obs S-Act K';'Act S-Act K'};
+color_name = {[0 0 0.5],[0 0.5 0],[0.1 0.6 0]};
 
 Condition = cell(num_cond,num_dir);
-for i=1:num_cond
-    for j=1:num_dir
-        Condition{i,j} = find([data_trials.Condition]==i & [data_trials.Direction]==j);
+for cd=1:num_cond
+    for ndir=1:num_dir
+        Condition{cd,ndir} = find([data_trials.Condition]==cd & [data_trials.Direction]==ndir);
     end
 end
 
-M = struct(); 
+Move = struct(); 
 lenM = NaN(num_cond,num_dir);
-for i=1:num_cond
-    for j=1:num_dir
-        M(i).(strcat('dir',num2str(j))) = data_trials(Condition{i,j});
-        lenM(i,j) = length(data_trials(Condition{i,j}));
+for cd=1:num_cond
+    for ndir=1:num_dir
+        Move(cd).(strcat('dir',num2str(ndir))) = data_trials(Condition{cd,ndir});
+        lenM(cd,ndir) = length(data_trials(Condition{cd,ndir}));
     end
 end
 
 %% Cursor Movement (x,y)
 Jfieldname = 'JXYEXY';
-Jduration = 1000;
+Jtime = 'timeET';
 MS = struct();
 MK = struct();
-for i=1:num_cond
-    for j=1:num_dir
-        M_app = M(i).(strcat('dir',num2str(j)));
-        MS_meanX = NaN(lenM(i,j),Jduration);
-        MS_meanY = NaN(lenM(i,j),Jduration);
-        MK_meanX = NaN(lenM(i,j),Jduration);
-        MK_meanY = NaN(lenM(i,j),Jduration);        
-        for k = 1:lenM(i,j)
-            MS_meanX(k,:) = M_app(k).(Jfieldname)(1,1:Jduration);
-            MS_meanY(k,:) = M_app(k).(Jfieldname)(2,1:Jduration);
-            MK_meanX(k,:) = M_app(k).(Jfieldname)(5,1:Jduration);
-            MK_meanY(k,:) = M_app(k).(Jfieldname)(6,1:Jduration);
-        end
-        MS(i).(strcat('dir',num2str(j))) = [mean(MS_meanX,1);mean(MS_meanY,1)];
-        MK(i).(strcat('dir',num2str(j))) = [mean(MK_meanX,1);mean(MK_meanY,1)];
+ET = struct();
+for cd=1:num_cond
+    for ndir=1:num_dir
+        M_app = Move(cd).(strcat('dir',num2str(ndir)));     
+        k = randi(lenM(cd,ndir));
+        time_app = M_app(k).(Jtime);
+        zero_ind = find(time_app>=0,1,'first');
+        ET_time = time_app(zero_ind)+M_app(k).ET;
+        Jduration_ind = find(time_app-abs(ET_time)>0,1,'First');
+        % Jduration_ind = 1250;
+        MS_appX = M_app(k).(Jfieldname)(1,zero_ind:Jduration_ind);
+        MS_appY = M_app(k).(Jfieldname)(2,zero_ind:Jduration_ind);
+        MK_appX = M_app(k).(Jfieldname)(5,zero_ind:Jduration_ind);
+        MK_appY = M_app(k).(Jfieldname)(6,zero_ind:Jduration_ind);
+        MS(cd).(strcat('dir',num2str(ndir))) = [MS_appX;MS_appY];
+        MK(cd).(strcat('dir',num2str(ndir))) = [MK_appX;MK_appY];
+        ET(cd).(strcat('dir',num2str(ndir))) = M_app(k).ET;
     end
-end
-            
+end            
 %% Reaction Time
 RTfieldname = 'RT';
 RT_S = struct();
@@ -83,132 +84,396 @@ RT_K = struct();
 RT_Kmean = struct();
 RT_Sstd = struct();
 RT_Kstd = struct();
-for i=1:num_cond
-    for j=1:num_dir
-        M_app = M(i).(strcat('dir',num2str(j)));
-        RT_Sdir = NaN(lenM(i,j),1);
-        RT_Kdir = NaN(lenM(i,j),1);
-        for k = 1:lenM(i,j)
-            RT_Sdir(k,1) = M_app(k).(strcat(RTfieldname,'_S'));
-            RT_Kdir(k,1) = M_app(k).(strcat(RTfieldname,'_K'));
+RT_NaN = struct();
+for cd=1:num_cond
+    for ndir=1:num_dir
+        Move_app = Move(cd).(strcat('dir',num2str(ndir)));
+        RT_Sdir = NaN(lenM(cd,ndir),1);
+        RT_Kdir = NaN(lenM(cd,ndir),1);
+        for k = 1:lenM(cd,ndir)
+            RT_Sdir(k,1) = Move_app(k).(strcat(RTfieldname,'_S'));
+            RT_Kdir(k,1) = Move_app(k).(strcat(RTfieldname,'_K'));
         end
-        RT_S(i).(strcat('dir',num2str(j))) = RT_Sdir;
-        RT_K(i).(strcat('dir',num2str(j))) = RT_Kdir;
-        RT_Smean(i).(strcat('dir',num2str(j))) = mean(RT_Sdir,'omitmissing');
-        RT_Kmean(i).(strcat('dir',num2str(j))) = mean(RT_Kdir,'omitmissing');
-        RT_Sstd(i).(strcat('dir',num2str(j))) = std(RT_Sdir,'omitmissing');
-        RT_Kstd(i).(strcat('dir',num2str(j))) = std(RT_Kdir,'omitmissing');
+        RT_S(cd).(strcat('dir',num2str(ndir))) = RT_Sdir;
+        RT_K(cd).(strcat('dir',num2str(ndir))) = RT_Kdir;
+        RT_NaN(cd).(strcat('dir',num2str(ndir))).len = length(RT_Sdir);
+        RT_NaN(cd).(strcat('dir',num2str(ndir))).S = [sum(isnan(RT_Sdir))];
+        RT_NaN(cd).(strcat('dir',num2str(ndir))).K = [sum(isnan(RT_Kdir))];
+        RT_Smean(cd).(strcat('dir',num2str(ndir))) = mean(RT_Sdir,'omitmissing');
+        RT_Kmean(cd).(strcat('dir',num2str(ndir))) = mean(RT_Kdir,'omitmissing');
+        RT_Sstd(cd).(strcat('dir',num2str(ndir))) = std(RT_Sdir,'omitmissing');
+        RT_Kstd(cd).(strcat('dir',num2str(ndir))) = std(RT_Kdir,'omitmissing');
     end
 end
+dir_path = strcat('D:\main_scriptDCM\',session_name);
 
 %% RT barplot
+infoNaN = stringNaN(RT_NaN,num_cond,num_dir);
+categories= {'dir1','dir2', 'dir3', 'dir4', 'dir5', 'dir6', 'dir7', 'dir8'};
+
     RT_SplotMean = (cell2mat(struct2cell(RT_Smean')))';
     RT_KplotMean = (cell2mat(struct2cell(RT_Kmean')))';
     RT_SplotStd = (cell2mat(struct2cell(RT_Sstd')))';
     RT_KplotStd = (cell2mat(struct2cell(RT_Kstd')))';
+    maxS = max(max(RT_SplotMean+RT_SplotStd));
+    maxK = max(max(RT_KplotMean+RT_KplotStd));
+
 for cd = 1:num_cond
     RT_plotMean = 1000*[RT_SplotMean(cd,:);RT_KplotMean(cd,:)];
     RT_plotStd = 1000*[RT_SplotStd(cd,:);RT_KplotStd(cd,:)];
-    categories = {'dir1', 'dir2', 'dir3', 'dir4', 'dir5', 'dir6', 'dir7', 'dir8'};
     figure
     RT_barplot = bar(RT_plotMean');
-    set(gca, 'XTickLabel', categories); 
+    infoNaN_plot = infoNaN(cd,:); 
+    cat_plot = cellfun(@(x, y) [x, '\newline', y], categories, infoNaN_plot, 'UniformOutput', false);
+    set(gca, 'XTickLabel', cat_plot);
+    set(gca, 'TickLabelInterpreter', 'tex');
     legend({'Monkey - S', 'Monkey - K'}, 'Location', 'northwest'); 
-    set(gca, 'XTickLabelRotation', 45); 
+    % set(gca, 'XTickLabelRotation', 45); 
     RT_barplot(1).FaceColor = 'b'; 
     RT_barplot(2).FaceColor = 'g'; 
-    RTtitle_name = append('Reaction Time -',' ',condition_name{cd});
     ylabel('RT [ms]');
+    ylim([0  round(max(1000*[maxS;maxK])/100)*100]);
+    RTtitle_name = append('Reaction Time','\newline',condition_name{cd});
     title(RTtitle_name,'Color',color_name{cd});
     hold on;
     x = (1:length(categories));
-    e1 = errorbar(x - 0.15, RT_plotMean(1,:), RT_SplotStd(1,:), ...
-                  'vertical', 'linestyle', 'none', 'CapSize', 10, 'Color', 'black', 'LineWidth', 1.5);
+    e1 = errorbar(x - 0.15, RT_plotMean(1,:), RT_plotStd(1,:), ...
+                  'vertical', 'linestyle', 'none', 'CapSize', 5, 'Color', 'c', 'LineWidth', 1);
     e1.Annotation.LegendInformation.IconDisplayStyle = 'off'; 
 
-    e2 = errorbar(x + 0.15, RT_plotMean(2,:), RT_SplotStd(2,:), ...
-                  'vertical', 'linestyle', 'none', 'CapSize', 10, 'Color', 'black','LineWidth', 1.5);
+    e2 = errorbar(x + 0.15, RT_plotMean(2,:), RT_plotStd(2,:), ...
+                  'vertical', 'linestyle', 'none', 'CapSize', 5, 'Color', [0.3, 0.8, 0.6],'LineWidth', 1);
     e2.Annotation.LegendInformation.IconDisplayStyle = 'off';
-    
     hold off;
+    RT_barplot_path = strcat(dir_path,'\RT_Barplot');
+    if ~exist(RT_barplot_path,'dir')
+        mkdir(RT_barplot_path)
+    end
+    name_fig = fullfile(RT_barplot_path,strcat(condition_name{cd},'_barplot.png'));
+    saveas(gcf,name_fig,'png');
 end
 
-%% RT boxplot
-for cd = 1:num_cond
-    fieldsRT_S = fieldnames(RT_S);
-    tempRT_S = cell(numel(fieldsRT_S), 1);
-    for i = 1:numel(fieldsRT_S)
-        tempRT_S{i} = RT_S(cd).(fieldsRT_S{i});
-    end
-    RT_Sbox = vertcat(tempRT_S{:});
-
-    fieldsRT_K = fieldnames(RT_K);
-    tempRT_K = cell(numel(fieldsRT_K), 1);
-    for i = 1:numel(fieldsRT_K)
-        tempRT_K{i} = RT_K(cd).(fieldsRT_K{i});
-    end
-    RT_Kbox = vertcat(tempRT_K{:});
-    groups = [repmat({'S-dir1'}, lenM(cd, 1), 1); repmat({'S-dir2'}, lenM(cd, 2), 1);
-        repmat({'S-dir3'}, lenM(cd, 3), 1); repmat({'S-dir4'}, lenM(cd, 4), 1);
-        repmat({'S-dir5'}, lenM(cd, 5), 1); repmat({'S-dir6'},lenM(cd, 6), 1);
-        repmat({'S-dir7'}, lenM(cd, 7), 1); repmat({'S-dir8'}, lenM(cd, 8), 1);
-        repmat({'K-dir1'}, lenM(cd, 1), 1); repmat({'K-dir2'}, lenM(cd, 2), 1);
-        repmat({'K-dir3'}, lenM(cd, 3), 1); repmat({'K-dir4'}, lenM(cd, 4), 1);
-        repmat({'K-dir5'}, lenM(cd, 5), 1); repmat({'K-dir6'}, lenM(cd, 6), 1);
-        repmat({'K-dir7'}, lenM(cd, 7), 1); repmat({'K-dir8'}, lenM(cd, 8), 1)];
-
-    categories = {'dir1', 'dir2', 'dir3', 'dir4', 'dir5', 'dir6', 'dir7', 'dir8'};
-    figure
-    boxplot([RT_Sbox;RT_Kbox], groups, 'Colors', [0 0 1; 1 1 0]);
-    set(gca, 'XTickLabel', categories);
-    legend({'Monkey - S', 'Monkey - K'}, 'Location', 'northwest');
-    set(gca, 'XTickLabelRotation', 45);
-    RTtitle_name = append('Reaction Time -',' ',condition_name{cd});
-    ylabel('RT [ms]');
-    title(RTtitle_name,'Color',color_name{cd});
-end
-
-
-    %% plot x,y position
+%% plot cursor x,y position
 for cd=1:num_cond
     figure
-    for dir = 1:num_dir
-        MS_data_x = MS(cd).(strcat('dir', num2str(dir)))(1,:);
-        MS_data_y = MS(cd).(strcat('dir', num2str(dir)))(2,:);
+    for ndir = 1:num_dir
+        MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+        MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);
 
-        MK_data_x = MK(cd).(strcat('dir', num2str(dir)))(1,:);
-        MK_data_y = MK(cd).(strcat('dir', num2str(dir)))(2,:);
+        MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+        MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);
 
         plot(MS_data_x, MS_data_y, 'b');
+        xlim([-10 10])
+        ylim([-10 10])
         hold on;
         plot(MK_data_x, MK_data_y, 'g');
-        label_text = strcat('Dir ', num2str(dir)); 
+        xlim([-10 10])
+        ylim([-10 10])
+        hold on;
+        label_text = strcat('Dir ', num2str(ndir)); 
         text(MS_data_x(end), MS_data_y(end), label_text, ...
             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'b');
         text(MK_data_x(end), MK_data_y(end), label_text, ...
             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'g');
+            % Creazione di oggetti fittizi per la legenda
+            h1 = plot(nan, nan, 'b');
+            h2 = plot(nan, nan, 'g');
+            r_dim = 1.81;
+            addcircle(r_dim);
+            % Aggiunta della legenda
+            legend([h1 h2], {'Monkey - S', 'Monkey - K'}, 'Location', 'best');
     end
-    title(strcat('Condition ',condition_name{cd}),'Color',color_name{cd})
+    Positionxyname = append('Condition -',' ',condition_name{cd});
+    title(Positionxyname,'Color',color_name{cd})
+     XY_path = strcat(dir_path,'\XY');
+    if ~exist(XY_path,'dir')
+        mkdir(XY_path)
+    end
+    name_fig = fullfile(XY_path,strcat(condition_name{cd},'_XY.png'));
+    saveas(gcf,name_fig,'png');
 end
 
-        %% Velocity profile
+% %% plot cursor x,y position in subplot
+% for cd=1:num_cond
+%     figure
+%     for ndir = 1:num_dir
+%         MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);
+%         MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);
+%         subplot(2,4,ndir)
+%         plot(MS_data_x, MS_data_y, 'b');
+%         hold on;
+%         plot(MK_data_x, MK_data_y, 'g');
+%         hold on;
+%         labeltitle = strcat('Dir ', num2str(ndir));
+%         title(labeltitle)
+%         label_text = strcat('Dir ', num2str(ndir)); 
+%         text(MS_data_x(end), MS_data_y(end), label_text, ...
+%             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'b');
+%         text(MK_data_x(end), MK_data_y(end), label_text, ...
+%             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'g');
+%             % Creazione di oggetti fittizi per la legenda
+%             h1 = plot(nan, nan, 'b');
+%             h2 = plot(nan, nan, 'g');
+%             r_dim = 1.5;
+%             addcircle(r_dim);
+%             % Aggiunta della legenda
+%             legend([h1 h2], {'Monkey - S', 'Monkey - K',''}, 'Location', 'best');
+%     end
+%     Positionxyname = append('ConRT_S_datadition -',' ',condition_name{cd});
+%     title(Positionxyname,'Color',color_name{cd})
+%      XY_subplot_path = strcat(dir_path,'\XY_subplot');
+%     if ~exist(XY_subplot_path,'dir')
+%         mkdir(XY_subplot_path)
+%     end
+%     name_fig = fullfile(XY_subplot_path,strcat(condition_name{cd},'XY_subplot.png'));
+%     saveas(gcf,name_fig,'png');
+% end
+
+%% plot cursor x,y position with RT
+if exist('plot_withRT','var')
+    for cd=1:num_cond
+        figure
+        for ndir = 1:num_dir
+            % time = ;
+            MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_S_data = RT_Smean(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_S_xy = find(time-abs(RT_S_data)>0,1,'First');
+            MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);
+
+            MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_K_data = RT_Kmean(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_K_xy = find(time-abs(RT_K_data)>0,1,'First');
+            MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);
+            % RT cycle
+            plot(MS_data_x(1:RT_S_xy), MS_data_y(1:RT_S_xy), 'r'); % RT mean dir
+            hold on;
+            plot(MS_data_x(RT_S_xy+1:end), MS_data_y(RT_S_xy+1:end), 'b');
+            hold on;
+            plot(MK_data_x(1:RT_K_xy), MK_data_y(1:RT_K_xy), 'k'); % RT mean dir
+            hold on;
+            plot(MK_data_x(RT_K_xy+1:end), MK_data_y(RT_K_xy+1:end), 'g');
+            label_text = strcat('Dir ', num2str(ndir));
+            text(MS_data_x(end), MS_data_y(end), label_text, ...
+                'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'b');
+            text(MK_data_x(end), MK_data_y(end), label_text, ...
+                'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'g');
+            % Creazione di oggetti fittizi per la legenda
+            h1 = plot(nan, nan, 'b');
+            h2 = plot(nan, nan, 'g');
+            r_dim = 1.5;
+            addcircle(r_dim);
+            % Aggiunta della legenda
+            legend([h1 h2], {'Monkey - S', 'Monkey - K',''}, 'Location', 'best');
+        end
+        Positionxyname = append('Condition -',' ',condition_name{cd});
+        title(Positionxyname,'Color',color_name{cd})
+        XY_RT_path = strcat(dir_path,'\XY_RT');
+        if ~exist(XY_RT_path,'dir')
+            mkdir(XY_RT_path)
+        end
+        name_fig = fullfile(XY_RT_path,strcat(condition_name{cd},'XY_RT.png'));
+        saveas(gcf,name_fig,'png');
+    end
+end
+
+% %% plot cursor x,y position with RT in subplot 
+% time = linspace(0,1,1000);
+% for cd=1:num_cond
+%     figure
+%     for ndir = 1:num_dir
+%         MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_S_data = RT_Smean(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_S_xy = find(time-abs(RT_S_data)>0,1,'First');
+%         MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);   
+% 
+%         MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_K_data = RT_Kmean(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_K_xy = find(time-abs(RT_K_data)>0,1,'First');
+%         MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);   
+%         % RT cycle
+%         subplot(2,4,ndir)
+%         plot(MS_data_x(1:RT_S_xy), MS_data_y(1:RT_S_xy), 'r'); % RT mean dir
+%         hold on;
+%         plot(MS_data_x(RT_S_xy+1:end), MS_data_y(RT_S_xy+1:end), 'b');
+%         hold on;
+%         plot(MK_data_x(1:RT_K_xy), MK_data_y(1:RT_K_xy), 'k'); % RT mean dir
+%         hold on;
+%         plot(MK_data_x(RT_K_xy+1:end), MK_data_y(RT_K_xy+1:end), 'g');
+%         hold on;
+%         labeltitle = strcat('Dir ', num2str(ndir));
+%         title(labeltitle)
+%         label_text = strcat('Dir ', num2str(ndir)); 
+%         text(MS_data_x(end), MS_data_y(end), label_text, ...
+%             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'b');
+%         text(MK_data_x(end), MK_data_y(end), label_text, ...
+%             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'g');
+%             % Creazione di oggetti fittizi per la legenda
+%             h1 = plot(nan, nan, 'b');
+%             h2 = plot(nan, nan, 'g');
+% 
+%             % Aggiunta della legenda
+%             legend([h1 h2], {'Monkey - S', 'Monkey - K'}, 'Location', 'best');
+%     end
+%     sgtitle(append('Condition -',' ',condition_name{cd}),'Color',color_name{cd})
+%      XY_RTsubplot_path = strcat(dir_path,'\XY_RTsubplot');
+%     if ~exist(XY_RTsubplot_path,'dir')
+%         mkdir(XY_RTsubplot_path)
+%     end
+%     name_fig = fullfile(XY_RTsubplot_path,strcat(condition_name{cd},'XY_RTsubplot.png'));
+%     saveas(gcf,name_fig,'png');
+% end
+
+%% plot cursor x,y position without RT
+if exist('plot_withoutRT','var')
+    time = linspace(0,1,1000);
+    for cd=1:num_cond
+        figure
+        for ndir = 1:num_dir
+            MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_S_data = RT_Smean(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_S_xy = find(time-abs(RT_S_data)>0,1,'First');
+            MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);
+
+            MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_K_data = RT_Kmean(cd).(strcat('dir', num2str(ndir)))(1,:);
+            RT_K_xy = find(time-abs(RT_K_data)>0,1,'First');
+            MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);
+            % RT cycle
+            plot(MS_data_x(RT_S_xy+1:end), MS_data_y(RT_S_xy+1:end), 'b');
+            hold on;
+            plot(MK_data_x(RT_K_xy+1:end), MK_data_y(RT_K_xy+1:end), 'g');
+            label_text = strcat('Dir ', num2str(ndir));
+            text(MS_data_x(end), MS_data_y(end), label_text, ...
+                'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'b');
+            text(MK_data_x(end), MK_data_y(end), label_text, ...
+                'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'g');
+            % Creazione di oggetti fittizi per la legenda
+            h1 = plot(nan, nan, 'b');
+            h2 = plot(nan, nan, 'g');
+
+            % Aggiunta della legenda
+            legend([h1 h2], {'Monkey - S', 'Monkey - K'}, 'Location', 'best');
+        end
+        Positionxyname = append('Condition -',' ',condition_name{cd});
+        title(Positionxyname,'Color',color_name{cd})
+        XY_noRT_path = strcat(dir_path,'\XY_noRT');
+        if ~exist(XY_noRT_path,'dir')
+            mkdir(XY_noRT_path)
+        end
+        name_fig = fullfile(XY_noRT_path,strcat(condition_name{cd},'XY_noRT.png'));
+        saveas(gcf,name_fig,'png');
+    end
+end
+% %% plot cursor x,y position without RT in subplot 
+% time = linspace(0,1,1000);
+% for cd=1:num_cond
+%     figure
+%     for ndir = 1:num_dir
+%         MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_S_data = RT_Smean(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_S_xy = find(time-abs(RT_S_data)>0,1,'First');
+%         MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);   
+% 
+%         MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_K_data = RT_Kmean(cd).(strcat('dir', num2str(ndir)))(1,:);
+%         RT_K_xy = find(time-abs(RT_K_data)>0,1,'First');
+%         MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);   
+%         % RT cycle
+%         subplot(2,4,ndir)
+%         plot(MS_data_x(RT_S_xy+1:end), MS_data_y(RT_S_xy+1:end), 'b');
+%         hold on;
+%         plot(MK_data_x(RT_K_xy+1:end), MK_data_y(RT_K_xy+1:end), 'g');
+%         hold on;
+%         labeltitle = strcat('Dir ', num2str(ndir));
+%         title(labeltitle)
+%         label_text = strcat('Dir ', num2str(ndir)); 
+%         text(MS_data_x(end), MS_data_y(end), label_text, ...
+%             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'b');
+%         text(MK_data_x(end), MK_data_y(end), label_text, ...
+%             'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'g');
+%             % Creazione di oggetti fittizi per la legenda
+%             h1 = plot(nan, nan, 'b');
+%             h2 = plot(nan, nan, 'g');
+% 
+%             % Aggiunta della legenda
+%             legend([h1 h2], {'Monkey - S', 'Monkey - K'}, 'Location', 'best');
+%     end
+%     sgtitle(append('Condition -',' ',condition_name{cd}),'Color',color_name{cd})
+%      XY_noRTsubplot_path = strcat(dir_path,'\XY_noRTsubplot');
+%     if ~exist(XY_noRTsubplot_path,'dir')
+%         mkdir(XY_noRTsubplot_path)
+%     end
+%     name_fig = fullfile(XY_noRTsubplot_path,strcat(condition_name{cd},'XY_noRTsubplot.png'));
+%     saveas(gcf,name_fig,'png');
+% end
+
+%% Velocity profile
+
+%% gradient application
 for cd=1:num_cond
     figure
-    for dir = 1:num_dir
-        MS_data_x = MS(cd).(strcat('dir', num2str(dir)))(1,:);
-        MS_data_y = MS(cd).(strcat('dir', num2str(dir)))(2,:);
+    for ndir = 1:num_dir
+        MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+        MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);
 
-        MK_data_x = MK(cd).(strcat('dir', num2str(dir)))(1,:);
-        MK_data_y = MK(cd).(strcat('dir', num2str(dir)))(2,:);
+        MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+        MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);
+
+        t = linspace(0,1,1000);
+        dt = gradient(t);
+        dx_s = gradient(MS_data_x);
+        dy_s = gradient(MS_data_y);
+        dvx_s = dx_s./dt;
+        dvy_s = dy_s./dt;
+
+        dv_s = sqrt(dvx_s.^2 + dvy_s.^2);
+
+        dx_k = gradient(MK_data_x);
+        dy_k = gradient(MK_data_y);
+        dvx_k = dx_k./dt;
+        dvy_k = dy_k./dt;
+
+        dv_k = sqrt(dvx_k.^2 + dvy_k.^2);
+        subplot(2,4,ndir)
+        plot(t, dv_s, 'b');
+        hold on;
+        plot(t, dv_k, 'g');
+        labeltitle = strcat('Dir ', num2str(ndir));
+        title(labeltitle)
+        legend({'Velocity profile - S','Velocity profile - K'},'Location','northwest');
+        xlabel('time [s]')
+        ylabel('Velocity Profile []')
+    end
+    sgtitle(append('Condition -',' ',condition_name{cd}),'Color',color_name{cd})
+     VelocityGradient_path = strcat(dir_path,'\VelocityGradient');
+    if ~exist(VelocityGradient_path,'dir')
+        mkdir(VelocityGradient_path)
+    end
+    name_fig = fullfile(VelocityGradient_path,strcat(condition_name{cd},'VelocityGradient.png'));
+    saveas(gcf,name_fig,'png');
+end
+
+%% diff and Smoothing application
+for cd=1:num_cond
+    figure  
+    for ndir = 1:num_dir
+        MS_data_x = MS(cd).(strcat('dir', num2str(ndir)))(1,:);
+        MS_data_y = MS(cd).(strcat('dir', num2str(ndir)))(2,:);
+
+        MK_data_x = MK(cd).(strcat('dir', num2str(ndir)))(1,:);
+        MK_data_y = MK(cd).(strcat('dir', num2str(ndir)))(2,:);
 
         t = linspace(0,1,1000);
         dt = diff(t);
 
         MS_dx = diff(MS_data_x);
         MS_dy = diff(MS_data_y);
-        tdiff = diff(t);
-        MS_vx = MS_dx./tdiff;
-        MS_vy = MS_dy./tdiff;
+
+        MS_vx = MS_dx./dt;
+        MS_vy = MS_dy./dt;
         MS_velocity = sqrt(MS_vx.^2 + MS_vy.^2);
     
         windowSize = 50;
@@ -218,173 +483,37 @@ for cd=1:num_cond
         %% Savitzky-Golay filter
         MS_smoothSG = sgolayfilt(MS_velocity, ofilter, windowSize+1);
 
-        MK_vx = MK_dx./tdiff;
-        MK_vy = MK_dy./tdiff;
+        MK_dx = diff(MK_data_x);
+        MK_dy = diff(MK_data_y);
+
+        MK_vx = MK_dx./dt;
+        MK_vy = MK_dy./dt;
         MK_velocity = sqrt(MK_vx.^2 + MK_vy.^2);
         %% moving average filter
         MK_smoothMA = movmean(MK_velocity, windowSize);
         %% Savitzky-Golay filter
         MK_smoothSG = sgolayfilt(MK_velocity, ofilter, windowSize+1);
-
-
-    plot(t(1:end-1), MS_velocity, 'b');
-    hold on;
-    plot(t(1:end-1), MK_velocity, 'g');
-        label_text = strcat('Dir ', num2str(dir)); 
-        text(MS_velocity(end), t(end), label_text, ...
-            'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'black');
-        text(MK_velocity(end), t(end), label_text, ...
-            'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'red');
+        
+        % figure subplot
+        subplot(2,4,ndir)
+        plot(t(1:end-1), MS_smoothSG, 'b');
+        hold on;
+        plot(t(1:end-1), MK_smoothSG, 'g');
+        labeltitle = strcat('Dir ', num2str(ndir)); 
+        title(labeltitle)
+        legend({'Velocity profile - S','Velocity profile - K'},'Location','northwest');
+        xlabel('time [s]')
+        ylabel('Velocity Profile []')
+        % text(MS_smoothSG(end), t(end), label_text, ...
+        %     'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'b');
+        % text(MK_smoothSG(end), t(end), label_text, ...
+        %     'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', 10, 'Color', 'g');
     end
-    title(strcat('Condition ',condition_name{cd}),'Color',color_name{cd})
-end
-
-%% Step 1: CSD compute
-fprintf('Step 1: csd compute\n');
-signal_process                          = 'CSD';
-par.csdCompute                          = csdComputeParams();            
-par.csdCompute.InField                  = 'LFP';
-par.csdCompute.OutField                 = signal_process;
-par.csdCompute.rsfactor                 = 0.2;
-par.csdCompute.optrescale               = 3;%-1;
-data_trials                             = csdCompute(data_trials,par.csdCompute);
-test_dir                                = [test_dir '_opt' num2str(par.csdCompute.optrescale) S];
-
-
-
-
-
-%% learning
-fprintf('Step 2: Monkey S-K model\n')
-par.dcmJointModel.whichmodel            = 5;
-par.dcmJointModel.custom_model          = [];%'customPriorsv3';
-par.dcmJointModel.InField               = signal_process;
-par.dcmJointModel.donlfp                = false;
-par.dcmJointModel.isdemo                = getSelectionIndexes(idir,1:3); % get S, K and S-K Trials
-par.dcmJointModel.S_PRIORS              = [];%DCM_S{S_winner}.fn;
-par.dcmJointModel.K_PRIORS              = [];%DCM_K{K_winner}.fn;
-out.dcmJointModel.DCM                   = dcmJointModel(data_trials,par.dcmJointModel);
-
-
-
-
-
-%% save test 
-% custom directory and file name string construction
-[~,Labels]  = getJointMonkeysLabels(1:24);
-iConds       = find(ismember(Labels,DCM_Joint.xU.name));
-save_dir    =[test_dir session_name S];
-save_dir    =[save_dir 'Dir'];
-for ind=1:length(idir)
-    save_dir=[save_dir '_' num2str(idir(ind))];
-end
-save_dir    =[save_dir S];
-save_file   =['LFP_M' num2str(par.dcmJointModel.whichmodel) '_' session_name];
-save_file   =[save_file '_D' num2str(par.BattagliaArrangeTrials.dmode)];
-save_file   =[save_file '_S' num2str(par.BattagliaArrangeTrials.selS)];
-save_file   =[save_file '_K' num2str(par.BattagliaArrangeTrials.selK)];
-
-save_file=[save_file '_C'];
-for inc=1:length(iConds)
-    save_file=[save_file '_' num2str(iConds(inc))];
-end
-if ~isempty (par.dcmJointModel.custom_model)
-    save_file=[save_file '_' par.dcmJointModel.custom_model];
-end
-if par.dcmJointModel.donlfp
-    save_file = [save_file '_DONLFP'];
-end
-fprintf('Saving in %s\n',[save_dir save_file]);
-DCM         =out.dcmJointModel.DCM;
-DCM.file    =save_file;
-DCM.fullpath=[save_dir, save_file];
-DCM.par     =par.dcmJointModel;
-if ~isfolder(save_dir)
-    mkdir(save_dir);
-end
-save(DCM.fullpath,'DCM','data_trials');
-%% stop if is on server
-if isonserver; return; end
-%% LFP
-iTrial          = 1;
-fprintf('Showing Trial %g\n',iTrial);
-hfg.lfp         = figure;
-hold on; box on; grid on;
-lw              = 2;
-InField         = 'LFP';
-xfld            = 't';
-TField          = [xfld InField];
-col1            = [0,0,0];
-nSources    = size(data_trials(iTrial).(InField),1);
-tiledlayout(nSources,1);
-sigtime     = data_trials(iTrial).(TField);
-sigtime     = sigtime-sigtime(1);
-for iSource=1:nSources
-    nexttile;
-    hold on; box on; grid on;
-    plot(sigtime,data_trials(iTrial).(InField)(iSource,:),'color',col1,'linewidth',lw);
-    xlabel('time [s]')
-    ylabel('LFP [mV]') 
-    title(['Source ' num2str(iSource)]);
-end
-sgtitle(['Low Field Potential, Trial ' num2str(iTrial)])
-%% CSD
-iTrial          = 2;
-fprintf('Showing CSD result of Trial %g\n',iTrial);
-hfg.cross       = figure;
-col1            = [1,0,0];
-col2            = [0,1,0];
-lw              = 3;
-InField         = 'CSD';
-xfld            = 't';
-TField          = [xfld,InField];
-[~,nRows,nCols] = size(data_trials(iTrial).(InField));
-p               = [0,0,1500,600];
-fs              = 13;
-tiledlayout(nRows,nCols);
-for iRow=1:nRows
-    for iCol=1:nCols
-        nexttile;
-        hold on; box on; grid on;
-        % plot original
-        xl  = [data_trials(iTrial).(TField)(1),data_trials(iTrial).(TField)(end)];
-        plot(data_trials(iTrial).(TField), ...
-             real(data_trials(iTrial).(InField)(:,iRow,iCol)),'color',col1,'linewidth',lw,'linestyle',':');%,M.Hz,real(CSD(:,1,2)),':')
-        % plot reconstructed
-        plot(data_trials(iTrial).(TField), ...
-             real(DCM.Hc{iTrial}(:,iRow,iCol)),'color',col2,'linewidth',lw);%,M.Hz,real(CSD(:,1,2)),':')
-        xlim(xl)
-        title(['Source ' num2str(iRow) ' vs Source' num2str(iCol)])
-        if iCol==nCols && iRow==nRows
-            legend('original','reconstructed');
-        end
-        if iRow==nRows
-            xlabel('Freq [Hz]');
-        end
-        if iCol==1
-            ylabel('CSD [dB/Hz]');
-        end
-        set(gca,'fontsize',fs);
+    sgtitle(append('Condition -',' ',condition_name{cd}),'Color',color_name{cd})
+     Velocitydiff_smooth_path = strcat(dir_path,'\Velocitydiff_smooth');
+    if ~exist(Velocitydiff_smooth_path,'dir')
+        mkdir(Velocitydiff_smooth_path)
     end
+    name_fig = fullfile(Velocitydiff_smooth_path,strcat(condition_name{cd},'Velocitydiff_smooth.png'));
+    saveas(gcf,name_fig,'png');
 end
-trialError  = computeError(data_trials(iTrial).(InField),DCM.Hc{iTrial});
-st          = sprintf('[cross]-spectral density - RMSE: %0.3f', trialError.RMSE);
-sgtitle(st,'fontsize',fs+2)
-set(hfg.cross,'Position',p);
-set(hfg.cross, 'PaperPositionMode','auto');
-
-%%
-% plot parameters and estimates
-%--------------------------------------------------------------------------
-hfg.expects = figure;
-hold on; box on; grid on;
-bar(exp(spm_vec(DCM.Ep)))
-title('conditional expectation')
-errorbar(exp(spm_vec(DCM.Ep)),exp(DCM.Cp))
-
-%% some plots
-plot_spm_dcm_csd_results(DCM,'Coupling (B)',figure);
-plot_spm_dcm_csd_results(DCM,'trial-specific effects',figure);
-
-% DCM_RESULTS_LFP_KS(DCM);
-%%

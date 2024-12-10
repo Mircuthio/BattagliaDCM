@@ -23,7 +23,7 @@ fprintf('Step 0: arrange trials\n');
 par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
 % par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
 par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
-par.BattagliaArrangeTrials.selS         = 1;
+par.BattagliaArrangeTrials.selS         = 2;
 par.BattagliaArrangeTrials.selK         = 1;
 par.BattagliaArrangeTrials.session_name = session_name;  % which session
 data_trials                             = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
@@ -84,7 +84,7 @@ save(DCM.fullpath,'DCM','data_trials');
 %% stop if is on server
 if isonserver; return; end
 %% LFP
-iTrial          = 1;
+iTrial          = 2;
 fprintf('Showing Trial %g\n',iTrial);
 hfg.lfp         = figure;
 hold on; box on; grid on;
