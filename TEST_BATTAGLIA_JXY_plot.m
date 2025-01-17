@@ -1,5 +1,5 @@
 %% function TEST_BATTAGLIA_JXY_plot
-clear all; close all;
+clear; close all;
 par.irng = 10;
 rng(par.irng)
 %% check if is on server
@@ -16,7 +16,7 @@ else
 end
 
 % fixed parameters
-session_name                    = 'SK004';%'SK004';%{'SK001','SK009'};  % session name 
+session_name                    = 'SK009';%'SK004';%{'SK001','SK009'};  % session name 
 idir                            = 1;        % directions -> 1-8 
 S                               = filesep;
 %% Step 0: arrange trials
