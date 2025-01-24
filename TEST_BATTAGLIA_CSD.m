@@ -1,6 +1,6 @@
 %% function TEST_BATTAGLIA_CSD
 clear, close all;
-rng(56)
+rng(10)
 %% check if is on server
 [~,nn]=system('hostname'); nn=strtrim(nn);
 if strcmp(nn,'rk018610')

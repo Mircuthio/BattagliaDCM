@@ -16,7 +16,7 @@ else
 end
 
 % fixed parameters
-session_name                    = 'SK009';%'SK004';%{'SK001','SK009'};  % session name 
+session_name                    = 'SK022';%'SK004';%{'SK001','SK009'};  % session name 
 idir                            = 1;        % directions -> 1-8 
 S                               = filesep;
 %% Step 0: arrange trials

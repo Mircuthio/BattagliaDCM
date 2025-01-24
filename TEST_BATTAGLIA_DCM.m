@@ -27,6 +27,7 @@ par.BattagliaArrangeTrials.selS         = 2;
 par.BattagliaArrangeTrials.selK         = 1;
 par.BattagliaArrangeTrials.session_name = session_name;  % which session
 data_trials                             = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
+% ArrangeTrialsConcatenate inserire tic toc
 %% Step 1: CSD compute
 fprintf('Step 1: csd compute\n');
 signal_process                          = 'CSD';
@@ -50,6 +51,10 @@ out.dcmJointModel.DCM                   = dcmJointModel(data_trials,par.dcmJoint
 %% save test 
 % custom directory and file name string construction
 [~,Labels]  = getJointMonkeysLabels(1:24);
+
+%% aggiunto da me perchè non va
+DCM_Joint = out.dcmJointModel.DCM;
+
 iConds       = find(ismember(Labels,DCM_Joint.xU.name));
 save_dir    =[test_dir session_name S];
 save_dir    =[save_dir 'Dir'];
