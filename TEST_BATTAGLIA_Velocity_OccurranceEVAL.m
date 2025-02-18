@@ -1,4 +1,4 @@
-%% function TEST_BATTAGLIA_Velocity_barplot_MeanVSsingleSession.m
+%% TEST_BATTAGLIA_Velocity_OccurranceEVAL.m
 clear; close all;
 par.irng = 10;
 rng(par.irng)
@@ -267,83 +267,6 @@ for condIdx = 1:num_cond+1
     end
 end
 
-%% Velocity Max barplot
-Velocity_Mean = struct();
-Velocity_Std = struct();
-for icond = 1:num_cond+1
-    for ndir = 1:ndir
-        Velocity_calc = Velocity_total(icond).(strcat('dir',num2str(ndir)));
-        Velocity_Mean(icond).(strcat('dir',num2str(ndir))) = mean(Velocity_calc);
-        Velocity_Std(icond).(strcat('dir',num2str(ndir))) = std(Velocity_calc);
-    end
-end
-Velocity_plotMean = (cell2mat(struct2cell(Velocity_Mean')))';
-Velocity_plotStd = (cell2mat(struct2cell(Velocity_Std')))';
-offset = max(max(Velocity_plotMean+Velocity_plotStd))/5;
-max_y = max(max(Velocity_plotMean+Velocity_plotStd))+offset;
-%% BOXPLOT FIGURE
+par.countVELoccurrance.perc = 50;
+[VEL_resultACT,VEL_resultJOINT,VEL_countJOINT,VEL_percJOINT]=countVELoccurrance(Velocity_total,par.countVELoccurrance);
 
-
-session_list = {'SK022';'SK025';'SK033';'SK035';'SK036';'SK038';'SK042';'SK043';...
-    'SK047';...,
-    'SK051';'SK059';'SK060';'SK062';'SK065';'SK069';'SK074'};
-
-for i=1:length(session_list)
-    session_single_name = session_list{i};
-
-    Velocity_Singlesession = struct();
-    lenTot = struct();
-    Bad_sessionSingle = struct();
-    fprintf('Step 0: arrange trials\n');
-    par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
-    % par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
-    par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
-    par.BattagliaArrangeTrials.selS         = 1;
-    par.BattagliaArrangeTrials.selK         = 1;
-    par.BattagliaArrangeTrials.session_name = session_single_name;  % which session
-    data_trialsSingle           = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
-
-    % Delete label 0 trials
-    idx_empty = find(arrayfun(@(x) isempty(x.trialType), data_trialsSingle));
-
-    if idx_empty ~= 0
-        Bad_sessionSingle.name = session_single_name;
-        Bad_sessionSingle.chamber = data_trialsSingle(idx_empty).Chamber;
-        Bad_sessionSingle.trialsId = data_trialsSingle(idx_empty).trialId;
-        Bad_sessionSingle.Trials = data_trialsSingle(idx_empty);
-    else
-        Bad_sessionSingle.name = session_single_name;
-        Bad_sessionSingle.chamber = data_trialsSingle.Chamber;
-        Bad_sessionSingle.trialsId = [];
-        Bad_sessionSingle.Trials = [];
-    end
-    data_trialsSingle(idx_empty) = [];
-    % add trialName
-    [~,LabelsSingle] = getJointMonkeysLabels(1:24);
-    for iTrial=1:length(data_trialsSingle)
-        data_trialsSingle(iTrial).trialName        = LabelsSingle{data_trialsSingle(iTrial).trialType};
-    end
-
-    dir_path = strcat('D:\main_scriptDCM\',session_single_name,'\rng',num2str(par.irng),'\');
-
-    data_trialsSingle = findSKdirection(data_trialsSingle);
-    par.VELOCITYsingleEXTRACT.num_cond = num_cond;
-    par.VELOCITYsingleEXTRACT.num_dir = num_dir;
-    par.VELOCITYsingleEXTRACT.windowSize = windowSize;
-
-    [Velocity_Ssingle,Velocity_Ksingle,VelocitySingle_plotMean,VelocitySingle_plotStd,max_ySingle,Velocity_name] = VELOCITYsingleEXTRACT(data_trialsSingle,par.VELOCITYsingleEXTRACT);
-
-    %% Barplot Figure
-    par.VelocitybarplotAllvsSingleDir.color_name = color_name;
-    par.VelocitybarplotAllvsSingleDir.num_dir = num_dir;
-    par.VelocitybarplotAllvsSingleDir.num_cond = num_cond;
-    par.VelocitybarplotAllvsSingleDir.max_y = max_y;
-    par.VelocitybarplotAllvsSingleDir.idcond = 1;
-    par.VelocitybarplotAllvsSingleDir.session_name = session_single_name;
-    par.VelocitybarplotAllvsSingleDir.chamber = data_trialsSingle(1).Chamber;
-    par.VelocitybarplotAllvsSingleDir.dir_path = dir_path;
-
-    VELOCITYbarplotAllvsSingleDir(Velocity_plotMean,Velocity_plotStd,Velocity_Ssingle,Velocity_Ksingle,Velocity_name,par.VelocitybarplotAllvsSingleDir);
-
-    close all;
-end

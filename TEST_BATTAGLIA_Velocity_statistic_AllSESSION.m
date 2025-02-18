@@ -442,7 +442,7 @@ for ndir=1:num_dir
                 if curr_pvalue(i, j) > 0.5
                     text(j, i, num2str(curr_pvalue(i, j),'%.4f'), 'HorizontalAlignment', 'center', ...
                         'Color', 'white', 'FontWeight', 'bold','FontSize',9);
-                elseif curr_pvalue(i, j) <= 0.5
+                elseif curr_pvalue(i, j) <= 0.05
                     if curr_pvalue(i, j) < 0.0001
                         text(j, i, num2str(curr_pvalue(i, j),'%.1e'), 'HorizontalAlignment', 'center', ...
                             'Color', 'black', 'FontWeight', 'bold','FontSize',9);

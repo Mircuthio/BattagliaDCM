@@ -1,4 +1,4 @@
-%% function TEST_BATTAGLIA_Velocity_barplot_MeanVSsingleSession.m
+%% function TEST_BATTAGLIA_TimeVmax_OccurranceEVAL.m
 clear; close all;
 par.irng = 10;
 rng(par.irng)
@@ -14,8 +14,11 @@ else
 end
 if ~isonserver
     test_dir    ='D:\SAPIENZA_Dataset\TEST_SAPIENZA';
+    filesep = '\';
 else
-    test_dir    ='~/SAPIENZA/SERVER/DCM';
+    test_dir    = '~/SAPIENZA/SERVER/DCM';
+    filesep = '/';
+
 end
 
 %% Selezione dei file
@@ -31,11 +34,10 @@ idir                            = 1;        % directions -> 1-8
 S                               = filesep;
 %% Step 0: arrange trials
 
-% dir_path = strcat('D:\main_scriptDCM\','AllSessions','\rng',num2str(par.irng),filesep);
-
-Velocity_session = struct();
+Time_session = struct();
 lenTot = struct();
 Bad_session = struct();
+
 for idsess = 1:length(session_name)
     fprintf('Step 0: arrange trials\n');
     par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
@@ -214,8 +216,8 @@ for idsess = 1:length(session_name)
         end
     end
 
-    MS_smoothSG_Max = struct();
-    MK_smoothSG_Max = struct();
+    TS_smoothSG_Max = struct();
+    TK_smoothSG_Max = struct();
 
     for cd=1:num_cond
         for ndir = 1:num_dir
@@ -224,126 +226,59 @@ for idsess = 1:length(session_name)
             Vk = MK_smoothSG(cd).(strcat('dir',num2str(ndir)));
             Vs_max = NaN(lenM(cd,ndir),1);
             Vk_max = NaN(lenM(cd,ndir),1);
+            Ts_max = NaN(lenM(cd,ndir),1);
+            Tk_max = NaN(lenM(cd,ndir),1);
             for k=1:lenM(cd,ndir)
+                time_appK = time_app(k).new;
                 MovOnset_ind = find(time_app(k).new>=0,1,'First');
+                time_new = time_appK(MovOnset_ind:end);
                 Vs_app = Vs(k).Vel;
                 Vk_app = Vk(k).Vel;
                 if Vs_app~=0
-                    Vs_max(k,1)= max(Vs_app(MovOnset_ind:end));
+                    [Vs_max(k,1),Ts_maxind]= max(Vs_app(MovOnset_ind:end));
+                    Ts_max(k,1) = time_new(Ts_maxind);
                 else
                     Vs_max(k,1) = 0;
+                    Ts_maxind = 0;
+                    Ts_max(k,1) = 0;
                 end
                 if Vk_app~=0
-                    Vk_max(k,1)  = max(Vk_app(MovOnset_ind:end));
+                    [Vk_max(k,1),Tk_maxind]  = max(Vk_app(MovOnset_ind:end));
+                    Tk_max(k,1) = time_new(Tk_maxind);
                 else
                     Vk_max(k,1) = 0;
+                    Tk_maxind = 0;
+                    Tk_max(k,1) = 0;
                 end
             end
-            MS_smoothSG_Max(cd).(strcat('dir',num2str(ndir))) = Vs_max;
-            MK_smoothSG_Max(cd).(strcat('dir',num2str(ndir))) = Vk_max;
+            TS_smoothSG_Max(cd).(strcat('dir',num2str(ndir))) = Ts_max;
+            TK_smoothSG_Max(cd).(strcat('dir',num2str(ndir))) = Tk_max;
         end
     end
     %% TEST Statistici per DIREZIONE
-    Vel_bar(1) = MS_smoothSG_Max(1);
-    Vel_bar(2) = MK_smoothSG_Max(2);
-    Vel_bar(3) = MS_smoothSG_Max(3);
-    Vel_bar(4) = MK_smoothSG_Max(3);
-    Velocity_session(idsess).cond = Vel_bar;
+    Time_statistic(1) = TS_smoothSG_Max(1);
+    Time_statistic(2) = TK_smoothSG_Max(2);
+    Time_statistic(3) = TS_smoothSG_Max(3);
+    Time_statistic(4) = TK_smoothSG_Max(3);
+    Time_session(idsess).cond = Time_statistic;
     lenTot(idsess).len = lenM;
 end
-
-Velocity_total = struct();
-nSession = numel(Velocity_session);
+TimeMax_total = struct();
+nSession = numel(Time_session);
 for condIdx = 1:num_cond+1
     for dirIdx = 1:num_dir
+        % Crea il nome del campo per la direzione corrente
         dirName = sprintf('dir%d', dirIdx);
         tempData = struct();
         for nSess = 1:nSession
-            if isfield(Velocity_session(nSess).cond(condIdx), dirName)
-                tempData(nSess).(dirName) = Velocity_session(nSess).cond(condIdx).(dirName);
+            if isfield(Time_session(nSess).cond(condIdx), dirName)
+                tempData(nSess).(dirName) = Time_session(nSess).cond(condIdx).(dirName);
             end
         end
-        Velocity_total(condIdx).(dirName) = vertcat(tempData.(dirName));
+        % Ora concatenare tutte le matrici nella cella e assegnarle alla struct B
+        TimeMax_total(condIdx).(dirName) = vertcat(tempData.(dirName));
     end
 end
 
-%% Velocity Max barplot
-Velocity_Mean = struct();
-Velocity_Std = struct();
-for icond = 1:num_cond+1
-    for ndir = 1:ndir
-        Velocity_calc = Velocity_total(icond).(strcat('dir',num2str(ndir)));
-        Velocity_Mean(icond).(strcat('dir',num2str(ndir))) = mean(Velocity_calc);
-        Velocity_Std(icond).(strcat('dir',num2str(ndir))) = std(Velocity_calc);
-    end
-end
-Velocity_plotMean = (cell2mat(struct2cell(Velocity_Mean')))';
-Velocity_plotStd = (cell2mat(struct2cell(Velocity_Std')))';
-offset = max(max(Velocity_plotMean+Velocity_plotStd))/5;
-max_y = max(max(Velocity_plotMean+Velocity_plotStd))+offset;
-%% BOXPLOT FIGURE
-
-
-session_list = {'SK022';'SK025';'SK033';'SK035';'SK036';'SK038';'SK042';'SK043';...
-    'SK047';...,
-    'SK051';'SK059';'SK060';'SK062';'SK065';'SK069';'SK074'};
-
-for i=1:length(session_list)
-    session_single_name = session_list{i};
-
-    Velocity_Singlesession = struct();
-    lenTot = struct();
-    Bad_sessionSingle = struct();
-    fprintf('Step 0: arrange trials\n');
-    par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
-    % par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
-    par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
-    par.BattagliaArrangeTrials.selS         = 1;
-    par.BattagliaArrangeTrials.selK         = 1;
-    par.BattagliaArrangeTrials.session_name = session_single_name;  % which session
-    data_trialsSingle           = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
-
-    % Delete label 0 trials
-    idx_empty = find(arrayfun(@(x) isempty(x.trialType), data_trialsSingle));
-
-    if idx_empty ~= 0
-        Bad_sessionSingle.name = session_single_name;
-        Bad_sessionSingle.chamber = data_trialsSingle(idx_empty).Chamber;
-        Bad_sessionSingle.trialsId = data_trialsSingle(idx_empty).trialId;
-        Bad_sessionSingle.Trials = data_trialsSingle(idx_empty);
-    else
-        Bad_sessionSingle.name = session_single_name;
-        Bad_sessionSingle.chamber = data_trialsSingle.Chamber;
-        Bad_sessionSingle.trialsId = [];
-        Bad_sessionSingle.Trials = [];
-    end
-    data_trialsSingle(idx_empty) = [];
-    % add trialName
-    [~,LabelsSingle] = getJointMonkeysLabels(1:24);
-    for iTrial=1:length(data_trialsSingle)
-        data_trialsSingle(iTrial).trialName        = LabelsSingle{data_trialsSingle(iTrial).trialType};
-    end
-
-    dir_path = strcat('D:\main_scriptDCM\',session_single_name,'\rng',num2str(par.irng),'\');
-
-    data_trialsSingle = findSKdirection(data_trialsSingle);
-    par.VELOCITYsingleEXTRACT.num_cond = num_cond;
-    par.VELOCITYsingleEXTRACT.num_dir = num_dir;
-    par.VELOCITYsingleEXTRACT.windowSize = windowSize;
-
-    [Velocity_Ssingle,Velocity_Ksingle,VelocitySingle_plotMean,VelocitySingle_plotStd,max_ySingle,Velocity_name] = VELOCITYsingleEXTRACT(data_trialsSingle,par.VELOCITYsingleEXTRACT);
-
-    %% Barplot Figure
-    par.VelocitybarplotAllvsSingleDir.color_name = color_name;
-    par.VelocitybarplotAllvsSingleDir.num_dir = num_dir;
-    par.VelocitybarplotAllvsSingleDir.num_cond = num_cond;
-    par.VelocitybarplotAllvsSingleDir.max_y = max_y;
-    par.VelocitybarplotAllvsSingleDir.idcond = 1;
-    par.VelocitybarplotAllvsSingleDir.session_name = session_single_name;
-    par.VelocitybarplotAllvsSingleDir.chamber = data_trialsSingle(1).Chamber;
-    par.VelocitybarplotAllvsSingleDir.dir_path = dir_path;
-
-    VELOCITYbarplotAllvsSingleDir(Velocity_plotMean,Velocity_plotStd,Velocity_Ssingle,Velocity_Ksingle,Velocity_name,par.VelocitybarplotAllvsSingleDir);
-
-    close all;
-end
+par.countTIMEoccurrance.perc = 50;
+[TIME_resultACT,TIME_resultJOINT,TIME_countJOINT,TIME_percJOINT]=countRToccurrance(TimeMax_total,par.countTIMEoccurrance);

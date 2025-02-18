@@ -1,6 +1,8 @@
-%% function TEST_BATTAGLIA_DCM
+%% function TEST_BATTAGLIA_DCM_AllLFP
 clear all
 rng(10)
+tic
+
 %% check if is on server
 [~,nn]=system('hostname'); nn=strtrim(nn);
 if strcmp(nn,'rk018610')
@@ -9,25 +11,18 @@ else
     isonserver=false;
 end
 if ~isonserver
-    test_dir    ='~/TESTS/SAPIENZA/DCM';
+    test_dir    ='D:\main_scriptDCM\TESTS\SAPIENZA\DCM';
 else
-    test_dir    ='~/SAPIENZA/SERVER/DCM';
+    test_dir    ='/home/frosolone/SAPIENZA_REULTS/DCM';
 end
 
 % fixed parameters
-session_name                    = 'SK022';%'SK004';%{'SK001','SK009'};  % session name 
+session_name                    = 'SK009';%'SK004';%{'SK001','SK009'};  % session name 
 idir                            = 1;        % directions -> 1-8 
 S                               = filesep;
 %% Step 0: arrange trials
 fprintf('Step 0: arrange trials\n');
-par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
-% par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
-par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
-par.BattagliaArrangeTrials.selS         = 2;
-par.BattagliaArrangeTrials.selK         = 1;
-par.BattagliaArrangeTrials.session_name = session_name;  % which session
-data_trials                             = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
-% ArrangeTrialsConcatenate inserire tic toc
+data_trials = ArrangeTrialsConcatenate(1,session_name);
 %% Step 1: CSD compute
 fprintf('Step 1: csd compute\n');
 signal_process                          = 'CSD';
@@ -86,7 +81,8 @@ if ~isfolder(save_dir)
     mkdir(save_dir);
 end
 save(DCM.fullpath,'DCM','data_trials');
-%% stop if is on server
+%% stop if is on server 
+toc
 if isonserver; return; end
 %% LFP
 iTrial          = 2;

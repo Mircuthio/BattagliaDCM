@@ -1,4 +1,4 @@
-%% function TEST_BATTAGLIA_DCM
+%% function TEST_BATTAGLIA_DCM_MIrKO
 clear all
 rng(10)
 %% check if is on server
@@ -14,20 +14,55 @@ else
     test_dir    ='~/SAPIENZA/SERVER/DCM';
 end
 
+%% Selezione dei file
+directory_path = 'D:\SAPIENZA_Dataset\BATTAGLIA_Data';
+all_files = dir(fullfile(directory_path, '*.mat'));
+file_names = {all_files.name};
+files_H = file_names(endsWith(file_names, 'H_Raw.mat'));
+files_E = file_names(endsWith(file_names, 'E_Raw.mat'));
+
 % fixed parameters
-session_name                    = 'SK022';%'SK004';%{'SK001','SK009'};  % session name 
-idir                            = 1;        % directions -> 1-8 
+session_name = erase(files_H,'H_Raw.mat');
+idir                            = 1;        % directions -> 1-8
 S                               = filesep;
 %% Step 0: arrange trials
-fprintf('Step 0: arrange trials\n');
-par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
-% par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
-par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
-par.BattagliaArrangeTrials.selS         = 2;
-par.BattagliaArrangeTrials.selK         = 1;
-par.BattagliaArrangeTrials.session_name = session_name;  % which session
-data_trials                             = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
-% ArrangeTrialsConcatenate inserire tic toc
+
+dir_path = strcat('D:\main_scriptDCM\','AllSessions','\rng',num2str(par.irng),filesep);
+
+RT_session = struct();
+lenTot = struct();
+Bad_session = struct();
+for idsess = 1:length(session_name)
+    fprintf('Step 0: arrange trials\n');
+    par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
+    % par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
+    par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
+    par.BattagliaArrangeTrials.selS         = 1;
+    par.BattagliaArrangeTrials.selK         = 1;
+    par.BattagliaArrangeTrials.session_name = session_name{idsess};  % which session
+    data_trials           = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
+    
+    % Delete label 0 trials
+    idx_empty = find(arrayfun(@(x) isempty(x.trialType), data_trials));
+    
+    if idx_empty ~= 0
+        Bad_session(idsess).name = session_name(idsess);
+        Bad_session(idsess).chamber = data_trials(idx_empty).Chamber;
+        Bad_session(idsess).trialsId = data_trials(idx_empty).trialId;
+        Bad_session(idsess).Trials = data_trials(idx_empty);
+    else
+        Bad_session(idsess).name = session_name(idsess);
+        Bad_session(idsess).chamber = data_trials(idsess).Chamber;
+        Bad_session(idsess).trialsId = [];
+        Bad_session(idsess).Trials = [];
+    end
+    data_trials(idx_empty) = [];
+    % add trialName
+    [~,Labels] = getJointMonkeysLabels(1:24);
+    for iTrial=1:length(data_trials)
+        data_trials(iTrial).trialName        = Labels{data_trials(iTrial).trialType};
+    end
+end
 %% Step 1: CSD compute
 fprintf('Step 1: csd compute\n');
 signal_process                          = 'CSD';
@@ -51,10 +86,6 @@ out.dcmJointModel.DCM                   = dcmJointModel(data_trials,par.dcmJoint
 %% save test 
 % custom directory and file name string construction
 [~,Labels]  = getJointMonkeysLabels(1:24);
-
-%% aggiunto da me perchè non va
-DCM_Joint = out.dcmJointModel.DCM;
-
 iConds       = find(ismember(Labels,DCM_Joint.xU.name));
 save_dir    =[test_dir session_name S];
 save_dir    =[save_dir 'Dir'];
@@ -89,7 +120,7 @@ save(DCM.fullpath,'DCM','data_trials');
 %% stop if is on server
 if isonserver; return; end
 %% LFP
-iTrial          = 2;
+iTrial          = 1;
 fprintf('Showing Trial %g\n',iTrial);
 hfg.lfp         = figure;
 hold on; box on; grid on;

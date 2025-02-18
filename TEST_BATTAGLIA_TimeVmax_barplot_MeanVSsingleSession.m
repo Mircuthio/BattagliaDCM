@@ -295,61 +295,66 @@ offset = max(max(TimeMax_plotMean+TimeMax_plotStd))/5;
 max_y = max(max(TimeMax_plotMean+TimeMax_plotStd))+offset;
 
 %% BOXPLOT FIGURE
+session_list = {'SK022';'SK025';'SK033';'SK035';'SK036';'SK038';'SK042';'SK043';...
+    'SK047';...,
+    'SK051';'SK059';'SK060';'SK062';'SK065';'SK069';'SK074'};
 
-%% BOXPLOT FIGURE
-TimeMax_Singlesession = struct();
-lenTot = struct();
-Bad_sessionSingle = struct();
-session_name = 'SK009';
-fprintf('Step 0: arrange trials\n');
-par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
-% par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
-par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
-par.BattagliaArrangeTrials.selS         = 1;
-par.BattagliaArrangeTrials.selK         = 1;
-par.BattagliaArrangeTrials.session_name = session_name;  % which session
-data_trialsSingle           = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
+for i=1:length(session_list)
+    session_single_name = session_list{i};
     
-% Delete label 0 trials
-idx_empty = find(arrayfun(@(x) isempty(x.trialType), data_trialsSingle));
+    TimeMax_Singlesession = struct();
+    lenTot = struct();
+    Bad_sessionSingle = struct();
+    fprintf('Step 0: arrange trials\n');
+    par.BattagliaArrangeTrials              = BattagliaArrangeTrialsParams();
+    % par.BattagliaArrangeTrials.whichmodel   = 7;        % 7 Model for action session. 5 Model for all sessions
+    par.BattagliaArrangeTrials.isdemo       = 1;        % getSelectionIndexes(1,1:3);
+    par.BattagliaArrangeTrials.selS         = 1;
+    par.BattagliaArrangeTrials.selK         = 1;
+    par.BattagliaArrangeTrials.session_name = session_single_name;  % which session
+    data_trialsSingle           = BattagliaArrangeTrials(par.BattagliaArrangeTrials);
 
-if idx_empty ~= 0
-    Bad_sessionSingle.name = session_name;
-    Bad_sessionSingle.chamber = data_trialsSingle(idx_empty).Chamber;
-    Bad_sessionSingle.trialsId = data_trialsSingle(idx_empty).trialId;
-    Bad_sessionSingle.Trials = data_trialsSingle(idx_empty);
-else
-    Bad_sessionSingle.name = session_name;
-    Bad_sessionSingle.chamber = data_trialsSingle.Chamber;
-    Bad_sessionSingle.trialsId = [];
-    Bad_sessionSingle.Trials = [];
+    % Delete label 0 trials
+    idx_empty = find(arrayfun(@(x) isempty(x.trialType), data_trialsSingle));
+
+    if idx_empty ~= 0
+        Bad_sessionSingle.name = session_single_name;
+        Bad_sessionSingle.chamber = data_trialsSingle(idx_empty).Chamber;
+        Bad_sessionSingle.trialsId = data_trialsSingle(idx_empty).trialId;
+        Bad_sessionSingle.Trials = data_trialsSingle(idx_empty);
+    else
+        Bad_sessionSingle.name = session_single_name;
+        Bad_sessionSingle.chamber = data_trialsSingle.Chamber;
+        Bad_sessionSingle.trialsId = [];
+        Bad_sessionSingle.Trials = [];
+    end
+    data_trialsSingle(idx_empty) = [];
+    % add trialName
+    [~,LabelsSingle] = getJointMonkeysLabels(1:24);
+    for iTrial=1:length(data_trialsSingle)
+        data_trialsSingle(iTrial).trialName        = LabelsSingle{data_trialsSingle(iTrial).trialType};
+    end
+
+    dir_path = strcat('D:\main_scriptDCM\',session_single_name,'\rng',num2str(par.irng),'\');
+
+    data_trialsSingle = findSKdirection(data_trialsSingle);
+    par.TimeMAXsingleEXTRACT.num_cond = num_cond;
+    par.TimeMAXsingleEXTRACT.num_dir = num_dir;
+    par.TimeMAXsingleEXTRACT.windowSize = windowSize;
+
+    [TimeMax_Ssingle,TimeMax_Ksingle,TimeMaxSingle_plotMean,TimeMaxSingle_plotStd,max_ySingle,TimeMax_name] = TimeMAXsingleEXTRACT(data_trialsSingle,par.TimeMAXsingleEXTRACT);
+
+    %% Barplot Figure
+    par.TimeMaxbarplotAllvsSingleDir.color_name = color_name;
+    par.TimeMaxbarplotAllvsSingleDir.num_dir = num_dir;
+    par.TimeMaxbarplotAllvsSingleDir.num_cond = num_cond;
+    par.TimeMaxbarplotAllvsSingleDir.max_y = max_y;
+    par.TimeMaxbarplotAllvsSingleDir.idcond = 1;
+    par.TimeMaxbarplotAllvsSingleDir.session_name = session_single_name;
+    par.TimeMaxbarplotAllvsSingleDir.chamber = data_trialsSingle(1).Chamber;
+    par.TimeMaxbarplotAllvsSingleDir.dir_path = dir_path;
+
+    TimeMAXbarplotAllvsSingleDir(TimeMax_plotMean,TimeMax_plotStd,TimeMax_Ssingle,TimeMax_Ksingle,TimeMax_name,par.TimeMaxbarplotAllvsSingleDir);
+
+    close all;
 end
-data_trialsSingle(idx_empty) = [];
-% add trialName
-[~,LabelsSingle] = getJointMonkeysLabels(1:24);
-for iTrial=1:length(data_trialsSingle)
-    data_trialsSingle(iTrial).trialName        = LabelsSingle{data_trialsSingle(iTrial).trialType};
-end
-
-dir_path = strcat('D:\main_scriptDCM\',session_name,'\rng',num2str(par.irng),'\');
-
-data_trialsSingle = findSKdirection(data_trialsSingle);
-par.TimeMAXsingleEXTRACT.num_cond = num_cond;
-par.TimeMAXsingleEXTRACT.num_dir = num_dir;
-par.TimeMAXsingleEXTRACT.windowSize = windowSize;
-
-[TimeMax_Ssingle,TimeMax_Ksingle,TimeMaxSingle_plotMean,TimeMaxSingle_plotStd,max_ySingle,TimeMax_name] = TimeMAXsingleEXTRACT(data_trialsSingle,par.TimeMAXsingleEXTRACT);
-
-%% Barplot Figure
-par.TimeMaxbarplotAllvsSingleDir.color_name = color_name;
-par.TimeMaxbarplotAllvsSingleDir.num_dir = num_dir;
-par.TimeMaxbarplotAllvsSingleDir.num_cond = num_cond;
-par.TimeMaxbarplotAllvsSingleDir.max_y = max_y;
-par.TimeMaxbarplotAllvsSingleDir.idcond = 1;
-par.TimeMaxbarplotAllvsSingleDir.session_name = session_name;
-par.TimeMaxbarplotAllvsSingleDir.chamber = data_trialsSingle(1).Chamber;
-par.TimeMaxbarplotAllvsSingleDir.dir_path = dir_path;
-
-TimeMAXbarplotAllvsSingleDir(TimeMax_plotMean,TimeMax_plotStd,TimeMax_Ssingle,TimeMax_Ksingle,TimeMax_name,par.TimeMaxbarplotAllvsSingleDir);
-
-close all;
